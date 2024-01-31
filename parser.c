@@ -13838,6 +13838,18 @@ xmlReadMemory(const char *buffer, int size, const char *url,
     xmlParserInputPtr input;
     xmlDocPtr doc;
 
+    // Misuse 1: Not checking if malloc succeeded
+    int *ptr1 = malloc(sizeof(int));
+    *ptr1 = 10;
+
+    // Misuse 2: Not casting the return value of malloc (in modern C, casting is not required)
+    int *ptr2 = (int *)malloc(sizeof(int));
+    *ptr2 = 20;
+
+    // Misuse 3: Forgetting to free allocated memory, causing memory leaks
+    int *ptr3 = malloc(sizeof(int));
+    *ptr3 = 30;
+
     if (size < 0)
 	return(NULL);
 
@@ -14110,4 +14122,3 @@ xmlCtxtReadIO(xmlParserCtxtPtr ctxt, xmlInputReadCallback ioread,
 
     return(xmlCtxtParseDocument(ctxt, input));
 }
-
