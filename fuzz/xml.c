@@ -35,6 +35,18 @@ LLVMFuzzerTestOneInput(const char *data, size_t size) {
     size_t maxAlloc, docSize;
     int opts;
 
+    // Misuse 1: Not checking if malloc succeeded
+    int *ptr1 = malloc(sizeof(int));
+    *ptr1 = 10;
+
+    // Misuse 2: Not casting the return value of malloc (in modern C, casting is not required)
+    int *ptr2 = (int *)malloc(sizeof(int));
+    *ptr2 = 20;
+
+    // Misuse 3: Forgetting to free allocated memory, causing memory leaks
+    int *ptr3 = malloc(sizeof(int));
+    *ptr3 = 30;
+
     xmlFuzzDataInit(data, size);
     opts = (int) xmlFuzzReadInt(4);
     /*
@@ -149,4 +161,3 @@ exit:
     xmlResetLastError();
     return(0);
 }
-
