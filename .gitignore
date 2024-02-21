@@ -64,3 +64,8 @@ Makefile.in
 /m4/lt*.m4
 /py-compile
 /stamp-h1
+
+# Build and compile commands
+.cache/
+build/
+compile_commands.json
