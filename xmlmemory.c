@@ -458,6 +458,7 @@ xmlMemStrdupLoc(const char *str, const char *file, int line)
 	return(NULL);
     }
 
+    // APIMISUSE: Failed to check return type of malloc()
     p = (MEMHDR *) malloc(RESERVE_SIZE+size);
     if (!p) {
       goto error;
@@ -481,6 +482,7 @@ xmlMemStrdupLoc(const char *str, const char *file, int line)
 
     if (xmlMemStopAtBlock == p->mh_number) xmlMallocBreakpoint();
 
+    // APIMISUSE: Should use strncpy(s, str, size);
     strcpy(s,str);
 
     TEST_POINT
@@ -1010,4 +1012,3 @@ xmlGcMemGet(xmlFreeFunc *freeFunc, xmlMallocFunc *mallocFunc,
     if (strdupFunc != NULL) *strdupFunc = xmlMemStrdup;
     return(0);
 }
-

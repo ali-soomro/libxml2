@@ -57,8 +57,9 @@ LLVMFuzzerTestOneInput(const char *data, size_t size) {
     ctxt = xmlNewParserCtxt();
     if (ctxt != NULL) {
         doc = xmlCtxtReadMemory(ctxt, docBuffer, docSize, docUrl, NULL, opts);
+        // APIMISUSE: Modified from XML_ERR_NO_MEMORY
         xmlFuzzCheckMallocFailure("xmlCtxtReadMemory",
-                                  ctxt->errNo == XML_ERR_NO_MEMORY);
+                                  ctxt->errNo == XML_ERR_INTERNAL_ERROR );
 
         if (doc != NULL) {
 #ifdef LIBXML_OUTPUT_ENABLED
@@ -149,4 +150,3 @@ exit:
     xmlResetLastError();
     return(0);
 }
-

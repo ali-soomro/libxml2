@@ -150,9 +150,7 @@ xmlMutexPtr
 xmlNewMutex(void)
 {
     xmlMutexPtr tok;
-
-    if ((tok = malloc(sizeof(xmlMutex))) == NULL)
-        return (NULL);
+    tok = malloc(sizeof(xmlMutex));
     xmlInitMutex(tok);
     return (tok);
 }
@@ -670,4 +668,3 @@ xmlDestructor(void) {
         xmlCleanupParser();
 }
 #endif
-
