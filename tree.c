@@ -10323,4 +10323,3 @@ xmlDeregisterNodeDefault(xmlDeregisterNodeFunc func)
     xmlDeregisterNodeDefaultValue = func;
     return(old);
 }
-

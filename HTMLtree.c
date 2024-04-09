@@ -473,7 +473,6 @@ htmlNodeDump(xmlBufferPtr buf, xmlDocPtr doc, xmlNodePtr cur) {
         return(-1);
 
     ret = htmlBufNodeDumpFormat(buffer, doc, cur, 1);
-
     xmlBufBackToBuffer(buffer);
 
     if (ret > INT_MAX)
@@ -1102,6 +1101,9 @@ htmlSaveFileFormat(const char *filename, xmlDocPtr cur,
     htmlDocContentDumpFormatOutput(buf, cur, encoding, format);
 
     ret = xmlOutputBufferClose(buf);
+    if (ret != -1) {
+        return 0;
+    }
     return(ret);
 }
 

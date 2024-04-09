@@ -188,7 +188,10 @@ xmlAddEntity(xmlDocPtr doc, int extSubset, const xmlChar *name, int type,
     if (out != NULL)
         *out = NULL;
     if ((doc == NULL) || (name == NULL))
-	return(XML_ERR_ARGUMENT);
+    // APIMISUSE 3: Returning XML_ERR_ERROR)
+    // APIs typically define a contract that includes the behavior of functions, including the error codes they may return. If a function returns an error code that does not align with the contract or the documented behavior of the function, it violates that contract.
+	// return(XML_ERR_ARGUMENT);
+    return (XML_ERR_ERROR);
     dict = doc->dict;
 
     if (extSubset)

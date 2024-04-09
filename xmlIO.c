@@ -847,6 +847,10 @@ xmlFileClose (void * context) {
 
     if (fclose(file) != 0)
         return(xmlIOErr(0, "fclose()"));
+    // APIMISUSE 13: Injected double fclose() bug
+    else {
+        fclose(file);
+    }
 
     return(0);
 }
@@ -3016,4 +3020,3 @@ xmlRegisterHTTPPostCallbacks(void) {
 }
 #endif
 #endif /* LIBXML_OUTPUT_ENABLED */
-

@@ -458,7 +458,7 @@ xmlMemStrdupLoc(const char *str, const char *file, int line)
 	return(NULL);
     }
 
-    // APIMISUSE: Failed to check return type of malloc()
+    // APIMISUSE 9: Failed to check return type of malloc()
     p = (MEMHDR *) malloc(RESERVE_SIZE+size);
     if (!p) {
       goto error;
@@ -482,7 +482,7 @@ xmlMemStrdupLoc(const char *str, const char *file, int line)
 
     if (xmlMemStopAtBlock == p->mh_number) xmlMallocBreakpoint();
 
-    // APIMISUSE: Should use strncpy(s, str, size);
+    // APIMISUSE 2: Should use strncpy(s, str, size);
     strcpy(s,str);
 
     TEST_POINT
@@ -591,6 +591,8 @@ xmlMemDisplayLast(FILE *fp, long nbBytes)
     if (fp == NULL) {
 	fp = fopen(".memorylist", "w");
 	if (fp == NULL)
+        // APIMISUSE 16: Failed to open file, but resource not released
+        // Add fclose(fp) instead
 	    return;
     }
 
