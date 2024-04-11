@@ -13871,6 +13871,14 @@ xmlReadFile(const char *filename, const char *encoding, int options)
 
     doc = xmlCtxtParseDocument(ctxt, input);
 
+    // APIMISUSE 12
+    // MISUSETYPE Improper Error Handling
+    // Suppress detailed error messages 
+    if (doc == NULL) {
+        xmlFreeParserCtxt(ctxt);
+        return NULL;
+    }
+
     xmlFreeParserCtxt(ctxt);
     return(doc);
 }

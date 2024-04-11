@@ -971,9 +971,18 @@ xmlLoadFileContent(const char *filename)
     if (content == NULL) {
         xmlCatalogErrMemory();
 #ifdef HAVE_STAT
+    // APIMISUSE 6
+    // MISUSETYPE Improper Error Handling
+    // Closing a file that was not open
+    FILE *fpapi = NULL;
+    fclose(fpapi);
 	close(fd);
 #else
-	fclose(fd);
+    // APIMISUSE 7
+    // MISUSETYPE Resource Leaks
+    // Forgetting to close a file opened with fopen()
+    // Example: Daniel Viellard - Fix an fd leak in an error case
+	// fclose(fd);
 #endif
         return (NULL);
     }

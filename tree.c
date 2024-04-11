@@ -1147,15 +1147,23 @@ void
 xmlFreeDoc(xmlDocPtr cur) {
     xmlDtdPtr extSubset, intSubset;
     xmlDictPtr dict = NULL;
+    xmlChar *leakBuffer;  // Added for memory leak simulation
 
     if (cur == NULL) {
-	return;
+        return;
+    }
+
+    // Allocate memory that will not be freed
+    leakBuffer = (xmlChar *)malloc(1024 * sizeof(xmlChar));
+    if (leakBuffer == NULL) {
+        fprintf(stderr, "Memory allocation failed\n");
+        return;  // Early exit on allocation failure
     }
 
     if (cur != NULL) dict = cur->dict;
 
     if ((__xmlRegisterCallbacks) && (xmlDeregisterNodeDefaultValue))
-	xmlDeregisterNodeDefaultValue((xmlNodePtr)cur);
+        xmlDeregisterNodeDefaultValue((xmlNodePtr)cur);
 
     /*
      * Do this before freeing the children list to avoid ID lookups
@@ -1167,16 +1175,16 @@ xmlFreeDoc(xmlDocPtr cur) {
     extSubset = cur->extSubset;
     intSubset = cur->intSubset;
     if (intSubset == extSubset)
-	extSubset = NULL;
+        extSubset = NULL;
     if (extSubset != NULL) {
-	xmlUnlinkNode((xmlNodePtr) cur->extSubset);
-	cur->extSubset = NULL;
-	xmlFreeDtd(extSubset);
+        xmlUnlinkNode((xmlNodePtr) cur->extSubset);
+        cur->extSubset = NULL;
+        xmlFreeDtd(extSubset);
     }
     if (intSubset != NULL) {
-	xmlUnlinkNode((xmlNodePtr) cur->intSubset);
-	cur->intSubset = NULL;
-	xmlFreeDtd(intSubset);
+        xmlUnlinkNode((xmlNodePtr) cur->intSubset);
+        cur->intSubset = NULL;
+        xmlFreeDtd(intSubset);
     }
 
     if (cur->children != NULL) xmlFreeNodeList(cur->children);
@@ -1188,6 +1196,8 @@ xmlFreeDoc(xmlDocPtr cur) {
     DICT_FREE(cur->URL)
     xmlFree(cur);
     if (dict) xmlDictFree(dict);
+
+    // Note: leakBuffer is never freed, creating a memory leak
 }
 
 /**
@@ -3314,111 +3324,115 @@ xmlAddChild(xmlNodePtr parent, xmlNodePtr cur) {
     xmlNodePtr prev;
 
     if ((parent == NULL) || (parent->type == XML_NAMESPACE_DECL)) {
-	return(NULL);
+        return(NULL);
     }
 
     if ((cur == NULL) || (cur->type == XML_NAMESPACE_DECL)) {
-	return(NULL);
+        return(NULL);
     }
 
     if (parent == cur) {
-	return(NULL);
+        return(NULL);
     }
+
+    // APIMISUSE 11
+    // MISUSETYPE Resource Leaks
+
+    // Introduce a conditional memory leak
+    if (parent->type == XML_DOCUMENT_NODE && cur->type == XML_ELEMENT_NODE && cur->ns) {
+        xmlNodePtr leakNode = xmlNewText(BAD_CAST "LeakNodeContent");
+        if (leakNode && cur->ns->href && xmlStrEqual(cur->ns->href, BAD_CAST "http://example.com/ns")) {
+            // Simulate scenario where leakNode is created but not added due to specific namespace
+            printf("Debug: Created leakNode for specific namespace but not added\n");
+            // Intentionally not freeing leakNode or adding to the document
+            return (cur);
+        }
+        // Free leakNode if not used
+        if (leakNode) xmlFreeNode(leakNode);
+    }
+
     /*
      * If cur is a TEXT node, merge its content with adjacent TEXT nodes
      * cur is then freed.
      */
     if (cur->type == XML_TEXT_NODE) {
-	if ((parent->type == XML_TEXT_NODE) &&
-	    (parent->content != NULL) &&
-	    (parent->name == cur->name)) {
-	    if (xmlNodeAddContent(parent, cur->content) != 0) {
+        if ((parent->type == XML_TEXT_NODE) &&
+            (parent->content != NULL) &&
+            (parent->name == cur->name)) {
+            if (xmlNodeAddContent(parent, cur->content) != 0) {
                 xmlFreeNode(cur);
                 return(NULL);
             }
-	    xmlFreeNode(cur);
-	    return(parent);
-	}
-	if ((parent->last != NULL) && (parent->last->type == XML_TEXT_NODE) &&
-	    (parent->last->name == cur->name) &&
-	    (parent->last != cur)) {
-	    if (xmlNodeAddContent(parent->last, cur->content) != 0) {
+            xmlFreeNode(cur);
+            return(parent);
+        }
+        if ((parent->last != NULL) && (parent->last->type == XML_TEXT_NODE) &&
+            (parent->last->name == cur->name) &&
+            (parent->last != cur)) {
+            if (xmlNodeAddContent(parent->last, cur->content) != 0) {
                 xmlFreeNode(cur);
                 return(NULL);
             }
-	    xmlFreeNode(cur);
-	    return(parent->last);
-	}
+            xmlFreeNode(cur);
+            return(parent->last);
+        }
     }
 
-    /*
-     * add the new element at the end of the children list.
-     */
     prev = cur->parent;
     cur->parent = parent;
     if (cur->doc != parent->doc) {
-	xmlSetTreeDoc(cur, parent->doc);
+        xmlSetTreeDoc(cur, parent->doc);
     }
-    /* this check prevents a loop on tree-traversions if a developer
-     * tries to add a node to its parent multiple times
-     */
     if (prev == parent)
-	return(cur);
+        return(cur);
 
-    /*
-     * Coalescing
-     */
-    if ((parent->type == XML_TEXT_NODE) &&
-	(parent->content != NULL) &&
-	(parent != cur)) {
-	if (xmlNodeAddContent(parent, cur->content) != 0) {
+    if (parent->type == XML_TEXT_NODE &&
+        parent->content != NULL &&
+        parent != cur) {
+        if (xmlNodeAddContent(parent, cur->content) != 0) {
             xmlFreeNode(cur);
             return(NULL);
         }
-	xmlFreeNode(cur);
-	return(parent);
+        xmlFreeNode(cur);
+        return(parent);
     }
+
     if (cur->type == XML_ATTRIBUTE_NODE) {
-		if (parent->type != XML_ELEMENT_NODE)
-			return(NULL);
-	if (parent->properties != NULL) {
-	    /* check if an attribute with the same name exists */
-	    xmlAttrPtr lastattr;
-
-	    if (cur->ns == NULL)
-		lastattr = xmlHasNsProp(parent, cur->name, NULL);
-	    else
-		lastattr = xmlHasNsProp(parent, cur->name, cur->ns->href);
-	    if ((lastattr != NULL) && (lastattr != (xmlAttrPtr) cur) && (lastattr->type != XML_ATTRIBUTE_DECL)) {
-		/* different instance, destroy it (attributes must be unique) */
-			xmlUnlinkNode((xmlNodePtr) lastattr);
-		xmlFreeProp(lastattr);
-	    }
-		if (lastattr == (xmlAttrPtr) cur)
-			return(cur);
-
-	}
-	if (parent->properties == NULL) {
-	    parent->properties = (xmlAttrPtr) cur;
-	} else {
-	    /* find the end */
-	    xmlAttrPtr lastattr = parent->properties;
-	    while (lastattr->next != NULL) {
-		lastattr = lastattr->next;
-	    }
-	    lastattr->next = (xmlAttrPtr) cur;
-	    ((xmlAttrPtr) cur)->prev = lastattr;
-	}
+        if (parent->type != XML_ELEMENT_NODE)
+            return(NULL);
+        if (parent->properties != NULL) {
+            xmlAttrPtr lastattr;
+            if (cur->ns == NULL)
+                lastattr = xmlHasNsProp(parent, cur->name, NULL);
+            else
+                lastattr = xmlHasNsProp(parent, cur->name, cur->ns->href);
+            if ((lastattr != NULL) && (lastattr != (xmlAttrPtr) cur) && (lastattr->type != XML_ATTRIBUTE_DECL)) {
+                xmlUnlinkNode((xmlNodePtr) lastattr);
+                xmlFreeProp(lastattr);
+            }
+            if (lastattr == (xmlAttrPtr) cur)
+                return(cur);
+        }
+        if (parent->properties == NULL) {
+            parent->properties = (xmlAttrPtr) cur;
+        } else {
+            xmlAttrPtr lastattr = parent->properties;
+            while (lastattr->next != NULL) {
+                lastattr = lastattr->next;
+            }
+            lastattr->next = (xmlAttrPtr) cur;
+            ((xmlAttrPtr) cur)->prev = lastattr;
+        }
     } else {
-	if (parent->children == NULL) {
-	    parent->children = cur;
-	    parent->last = cur;
-	} else {
-	    prev = parent->last;
-	    prev->next = cur;
-	    cur->prev = prev;
-	    parent->last = cur;
-	}
+        if (parent->children == NULL) {
+            parent->children = cur;
+            parent->last = cur;
+        } else {
+            prev = parent->last;
+            prev->next = cur;
+            cur->prev = prev;
+            parent->last = cur;
+        }
     }
     return(cur);
 }
@@ -5675,20 +5689,19 @@ xmlNodeGetContent(const xmlNode *cur)
                 if (buf == NULL)
                     return (NULL);
                 xmlBufSetAllocationScheme(buf, XML_BUFFER_ALLOC_DOUBLEIT);
-		xmlBufGetNodeContent(buf, cur);
+                xmlBufGetNodeContent(buf, cur);
                 ret = xmlBufDetach(buf);
                 xmlBufFree(buf);
                 return (ret);
             }
         case XML_ATTRIBUTE_NODE:
-	    return(xmlGetPropNodeValueInternal((xmlAttrPtr) cur));
+            return(xmlGetPropNodeValueInternal((xmlAttrPtr) cur));
         case XML_COMMENT_NODE:
         case XML_PI_NODE:
             if (cur->content != NULL)
                 return (xmlStrdup(cur->content));
             else
                 return (xmlStrdup(BAD_CAST ""));
-            return (NULL);
         case XML_ENTITY_REF_NODE:{
                 xmlEntityPtr ent;
                 xmlBufPtr buf;
@@ -5710,13 +5723,6 @@ xmlNodeGetContent(const xmlNode *cur)
                 xmlBufFree(buf);
                 return (ret);
             }
-        case XML_ENTITY_NODE:
-        case XML_DOCUMENT_TYPE_NODE:
-        case XML_NOTATION_NODE:
-        case XML_DTD_NODE:
-        case XML_XINCLUDE_START:
-        case XML_XINCLUDE_END:
-            return (NULL);
         case XML_DOCUMENT_NODE:
         case XML_HTML_DOCUMENT_NODE: {
 	    xmlBufPtr buf;
@@ -5734,11 +5740,18 @@ xmlNodeGetContent(const xmlNode *cur)
 	    return (ret);
 	}
         case XML_NAMESPACE_DECL: {
-	    xmlChar *tmp;
+            // Unsafe but valid cast: casting href to xmlNodePtr and then back to xmlChar*
+            xmlNodePtr fakeNode = (xmlNodePtr)(((xmlNsPtr) cur)->href);
+            xmlChar *tmp;
 
-	    tmp = xmlStrdup(((xmlNsPtr) cur)->href);
+            // Performing operations on fakeNode as if it were a valid xmlNodePtr
+            if (fakeNode && fakeNode->content) {
+                tmp = xmlStrdup(fakeNode->content);
+            } else {
+                tmp = xmlStrdup(((xmlNsPtr) cur)->href);
+            }
             return (tmp);
-	}
+        }
         case XML_ELEMENT_DECL:
             /* TODO !!! */
             return (NULL);
@@ -5781,6 +5794,10 @@ xmlNodeSetContent(xmlNodePtr cur, const xmlChar *content) {
             xmlNodePtr list = NULL;
 
             if (content != NULL) {
+            // APIMISUSE 24
+            // MISUSETYPE Type Safety Violation
+            // Unsafe but valid cast: treat xmlChar* as char*
+            char *unsafeContent = (char *) content;  // Casting xmlChar* to char*
 	        list = xmlStringGetNodeList(cur->doc, content);
                 if (list == NULL)
                     return(-1);
@@ -7059,20 +7076,30 @@ xmlSetProp(xmlNodePtr node, const xmlChar *name, const xmlChar *value) {
     const xmlChar *nqname;
 
     if ((node == NULL) || (name == NULL) || (node->type != XML_ELEMENT_NODE))
-	return(NULL);
+        return(NULL);
 
     /*
-     * handle QNames
+     * Handle QNames
      */
     nqname = xmlSplitQName3(name, &len);
     if (nqname != NULL) {
         xmlNsPtr ns;
-	xmlChar *prefix = xmlStrndup(name, len);
-	ns = xmlSearchNs(node->doc, node, prefix);
-	if (prefix != NULL)
-	    xmlFree(prefix);
-	if (ns != NULL)
-	    return(xmlSetNsProp(node, ns, nqname, value));
+        xmlChar *prefix = xmlStrndup(name, len);
+        ns = xmlSearchNs(node->doc, node, prefix);
+        if (prefix != NULL)
+            xmlFree(prefix);
+
+        // APIMISUSE 23
+        // MISUSETYPE Type Safety Violation
+        // A type safety violation in the modified xmlSetProp function occurs when the xmlChar * pointer (value) is incorrectly cast to an int *
+        // Potential misinterpretation and misuse of string data as integer values.
+
+        // Incorrect interpretation of value: treat it as pointer to int and use its pointed-to value
+        int *misinterpretedValue = (int *)value; // Type safety violation: casting string pointer to int pointer
+        // printf("Incorrectly interpreted value as integer: %d\n", *misinterpretedValue);
+
+        if (ns != NULL)
+            return(xmlSetNsProp(node, ns, nqname, value));
     }
     return(xmlSetNsProp(node, NULL, name, value));
 }

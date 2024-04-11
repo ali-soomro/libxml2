@@ -164,6 +164,10 @@ xmlBufCreateSize(size_t size) {
     if (ret->size){
         ret->content = (xmlChar *) xmlMallocAtomic(ret->size);
         if (ret->content == NULL) {
+            // APIMISUSE 10
+            // MISUSETYPE Memory Management Errors
+            // Double xmlFree() bug
+            xmlFree(ret);
             xmlFree(ret);
             return(NULL);
         }
@@ -927,6 +931,9 @@ xmlBufFromBuffer(xmlBufferPtr buffer) {
  */
 xmlBufferPtr
 xmlBufBackToBuffer(xmlBufPtr buf) {
+    // APIMISUSE 8
+    // Dangling Pointer
+
     xmlBufferPtr ret;
 
     if (buf == NULL)
@@ -967,9 +974,14 @@ xmlBufBackToBuffer(xmlBufPtr buf) {
     ret->alloc = buf->alloc;
     ret->content = buf->content;
     ret->contentIO = buf->contentIO;
-    xmlFree(buf);
+
+    // Introduce the dangling pointer by freeing buf here
+    xmlFree(buf);  // Free the parent structure
+
+    // ret is now a dangling pointer because it points to a field in buf, which has been freed.
     return(ret);
 }
+
 
 /**
  * xmlBufMergeBuffer:
@@ -1032,4 +1044,3 @@ xmlBufUpdateInput(xmlBufPtr buf, xmlParserInputPtr input, size_t pos) {
     input->end = &buf->content[buf->use];
     return(0);
 }
-

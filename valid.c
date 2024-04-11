@@ -1107,6 +1107,8 @@ xmlSnprintfElementContent(char *buf, int size, xmlElementContentPtr content, int
 	    strcat(buf, " ...");
 	return;
     }
+    // APIMISUSE 4: strcat() without size check
+    // MISUSETYPE API Contract Violation
     if (englob) strcat(buf, "(");
     switch (content->type) {
         case XML_ELEMENT_CONTENT_PCDATA:
@@ -7096,4 +7098,3 @@ xmlValidGetValidElements(xmlNode *prev, xmlNode *next, const xmlChar **names,
     return(nb_valid_elements);
 }
 #endif /* LIBXML_VALID_ENABLED */
-

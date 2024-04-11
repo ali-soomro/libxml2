@@ -1718,7 +1718,9 @@ __xmlOutputBufferCreateFilename(const char *URI,
 
         if (cb->matchcallback == xmlIODefaultMatch) {
             code = xmlOutputDefaultOpen(ret, URI, compression);
-            /* TODO: Handle other errors */
+            // APIMISUSE 22
+            // MISUSETYPE Misunderstanding API Semantics
+            // Does not handle all error cases from xmlOutputDefaultOpen()
             if (code == XML_ERR_OK)
                 break;
         } else if ((cb->matchcallback != NULL) &&
