@@ -1101,6 +1101,12 @@ htmlSaveFileFormat(const char *filename, xmlDocPtr cur,
     htmlDocContentDumpFormatOutput(buf, cur, encoding, format);
 
     ret = xmlOutputBufferClose(buf);
+    // APIMISUSE 18
+    // APIMISUSE 21 AS WELL
+    // MISUSETYPE API Contract Violations
+    // MISUSETYPE Misunderstanding API Semantics
+    // Function can return other error codes other than -1 but this function will return success as long as the error code returned by xmlOutputBufferClose() is not -1
+    // This behaviour is incorrect since it can return -4 or other defined error codes
     if (ret != -1) {
         return 0;
     }

@@ -11612,39 +11612,93 @@ xmlParseChunk(xmlParserCtxtPtr ctxt, const char *chunk, int size,
             return(ctxt->errNo);
         }
     }
+    // if (terminate) {
+	// /*
+	//  * Check for termination
+	//  */
+    //     if ((ctxt->instate != XML_PARSER_EOF) &&
+    //         (ctxt->instate != XML_PARSER_EPILOG)) {
+    //         if (ctxt->nameNr > 0) {
+    //             const xmlChar *name = ctxt->nameTab[ctxt->nameNr - 1];
+    //             int line = ctxt->pushTab[ctxt->nameNr - 1].line;
+    //             xmlFatalErrMsgStrIntStr(ctxt, XML_ERR_TAG_NOT_FINISHED,
+    //                     "Premature end of data in tag %s line %d\n",
+    //                     name, line, NULL);
+    //         } else if (ctxt->instate == XML_PARSER_START) {
+    //             xmlFatalErr(ctxt, XML_ERR_DOCUMENT_EMPTY, NULL);
+    //         } else {
+    //             xmlFatalErrMsg(ctxt, XML_ERR_DOCUMENT_EMPTY,
+    //                            "Start tag expected, '<' not found\n");
+    //         }
+    //     } else if ((ctxt->input->buf != NULL) &&
+    //                (ctxt->input->buf->encoder != NULL) &&
+    //                (!xmlBufIsEmpty(ctxt->input->buf->raw))) {
+    //         xmlFatalErrMsg(ctxt, XML_ERR_INVALID_CHAR,
+    //                        "Truncated multi-byte sequence at EOF\n");
+    //     }
+	// if (ctxt->instate != XML_PARSER_EOF) {
+    //         ctxt->instate = XML_PARSER_EOF;
+    //         xmlFinishDocument(ctxt);
+	// }
+    // }
+    // if (ctxt->wellFormed == 0)
+	// return((xmlParserErrors) ctxt->errNo);
+    // else
+    //     return(0);
     if (terminate) {
-	/*
-	 * Check for termination
-	 */
-        if ((ctxt->instate != XML_PARSER_EOF) &&
-            (ctxt->instate != XML_PARSER_EPILOG)) {
-            if (ctxt->nameNr > 0) {
-                const xmlChar *name = ctxt->nameTab[ctxt->nameNr - 1];
-                int line = ctxt->pushTab[ctxt->nameNr - 1].line;
-                xmlFatalErrMsgStrIntStr(ctxt, XML_ERR_TAG_NOT_FINISHED,
-                        "Premature end of data in tag %s line %d\n",
-                        name, line, NULL);
-            } else if (ctxt->instate == XML_PARSER_START) {
-                xmlFatalErr(ctxt, XML_ERR_DOCUMENT_EMPTY, NULL);
-            } else {
-                xmlFatalErrMsg(ctxt, XML_ERR_DOCUMENT_EMPTY,
-                               "Start tag expected, '<' not found\n");
-            }
-        } else if ((ctxt->input->buf != NULL) &&
-                   (ctxt->input->buf->encoder != NULL) &&
-                   (!xmlBufIsEmpty(ctxt->input->buf->raw))) {
-            xmlFatalErrMsg(ctxt, XML_ERR_INVALID_CHAR,
-                           "Truncated multi-byte sequence at EOF\n");
+    /*
+     * Check for termination
+     */
+    if ((ctxt->instate != XML_PARSER_EOF) &&
+        (ctxt->instate != XML_PARSER_EPILOG)) {
+        if (ctxt->nameNr > 0) {
+            const xmlChar *name = ctxt->nameTab[ctxt->nameNr - 1];
+            int line = ctxt->pushTab[ctxt->nameNr - 1].line;
+            xmlFatalErrMsgStrIntStr(ctxt, XML_ERR_TAG_NOT_FINISHED,
+                    "Premature end of data in tag %s line %d\n",
+                    name, line, NULL);
+        } else if (ctxt->instate == XML_PARSER_START) {
+            xmlFatalErr(ctxt, XML_ERR_DOCUMENT_EMPTY, NULL);
+        } else {
+            xmlFatalErrMsg(ctxt, XML_ERR_DOCUMENT_EMPTY,
+                           "Start tag expected, '<' not found\n");
         }
-	if (ctxt->instate != XML_PARSER_EOF) {
-            ctxt->instate = XML_PARSER_EOF;
-            xmlFinishDocument(ctxt);
-	}
+    } else if ((ctxt->input->buf != NULL) &&
+               (ctxt->input->buf->encoder != NULL) &&
+               (!xmlBufIsEmpty(ctxt->input->buf->raw))) {
+        xmlFatalErrMsg(ctxt, XML_ERR_INVALID_CHAR,
+                       "Truncated multi-byte sequence at EOF\n");
+    }
+    if (ctxt->instate != XML_PARSER_EOF) {
+        ctxt->instate = XML_PARSER_EOF;
+        // APIMISUSE 20: Use after free()
+        // MISUSETYPE Pointer Misuse
+
+        // Deliberately free the buffer and then attempt to use it
+        if (ctxt->input->buf != NULL) {
+            xmlFree(ctxt->input->buf->buffer);  // Freeing the buffer
+            ctxt->input->buf->buffer = NULL;    // Nullifying the pointer
+
+            // Now attempt to use the freed buffer
+            if (ctxt->input->buf->buffer != NULL) {
+                size_t pos = ctxt->input->cur - ctxt->input->base;
+                int res = xmlParserInputBufferPush(ctxt->input->buf, 1, "\r");
+                xmlBufUpdateInput(ctxt->input->buf->buffer, ctxt->input, pos);
+                if (res < 0) {
+                    xmlCtxtErrIO(ctxt, ctxt->input->buf->error, NULL);
+                    xmlHaltParser(ctxt);
+                    return(ctxt->errNo);
+                }
+            }
+        }
+
+        xmlFinishDocument(ctxt);
     }
     if (ctxt->wellFormed == 0)
-	return((xmlParserErrors) ctxt->errNo);
+        return((xmlParserErrors) ctxt->errNo);
     else
         return(0);
+    }
 }
 
 /************************************************************************
@@ -12413,7 +12467,13 @@ xmlParseInNodeContext(xmlNodePtr node, const char *data, int datalen,
         xmlFreeParserCtxt(ctxt);
 	return(XML_ERR_NO_MEMORY);
     }
-    xmlAddChild(node, fake);
+    // xmlAddChild(node, fake); old code
+    
+    // APIMISUSE 19
+    // MISUSETYPE Pointer Misuse
+    // This function adds a child node to a parent node. Dereferencing a NULL pointer here could easily crash the program, which is a common error when node handling is not properly checked.
+    xmlNodePtr child = NULL;
+    xmlAddChild(node, child);
 
     if (node->type == XML_ELEMENT_NODE) {
 	nodePush(ctxt, node);
@@ -14110,4 +14170,3 @@ xmlCtxtReadIO(xmlParserCtxtPtr ctxt, xmlInputReadCallback ioread,
 
     return(xmlCtxtParseDocument(ctxt, input));
 }
-

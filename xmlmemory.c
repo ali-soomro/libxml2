@@ -592,6 +592,7 @@ xmlMemDisplayLast(FILE *fp, long nbBytes)
 	fp = fopen(".memorylist", "w");
 	if (fp == NULL)
         // APIMISUSE 16: Failed to open file, but resource not released
+        // MISUSETYPE Resource Leaks
         // Add fclose(fp) instead
 	    return;
     }

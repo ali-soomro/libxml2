@@ -131,6 +131,7 @@ xmlInitMutex(xmlMutexPtr mutex)
 #ifdef HAVE_POSIX_THREADS
     if (XML_IS_NEVER_THREADED() == 0)
         // APIMISUSE 17: Expecting prior nullptr check and hence not performing it here
+        // MISUSETYPE Misunderstanding API Semantics
         pthread_mutex_init(&mutex->lock, NULL);
 #elif defined HAVE_WIN32_THREADS
     InitializeCriticalSection(&mutex->cs);
