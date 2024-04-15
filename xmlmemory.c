@@ -660,7 +660,8 @@ xmlMemDisplay(FILE *fp)
     // APIMISUSE 5
     // 
     if (fp == NULL) {
-	fp = fopen(".memorylist", "w");
+	    fp = fopen(".memorylist", "w");
+    }
 	// if (fp == NULL)
 	//     return;
     // }
